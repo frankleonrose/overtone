@@ -87,10 +87,11 @@
             (or (:num-outs spec) 1)
             spec)
         ug (if (contains? spec :init) ((:init spec) ug) ug)]
-    (when (and *ugens* *constants*)
-      (set! *ugens* (conj *ugens* ug))
-      (doseq [const (filter number? (:args ug))]
-        (set! *constants* (conj *constants* const))))
+    (when-not (and *ugens* *constants*)
+      (throw (Exception. (format "Calling ugen \"%s\" outside of a synth definition" (:name spec)))))
+    (set! *ugens* (conj *ugens* ug))
+    (doseq [const (filter number? (:args ug))]
+      (set! *constants* (conj *constants* const)))
     (if (> (:n-outputs ug) 1)
       (map-indexed (fn [idx _] (output-proxy ug idx)) (range (:n-outputs ug)))
       ug)))
