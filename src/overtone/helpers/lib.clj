@@ -183,20 +183,24 @@
    It is assumed that the values passed in as the args are *not*
    keywords."
   [args arg-names default-map]
-  (loop [args args
-         names arg-names
-         arg-map default-map]
-    (if (not (empty? args))
-      (if (and
-           (keyword? (first args))
-           (even? (count args)))
-        (merge arg-map (apply hash-map args))
-        (recur (next args)
-               (next names)
-               (assoc arg-map
-                 (first names)
-                 (first args))))
-      arg-map)))
+  (let [arg-map
+        (loop [args args
+               names arg-names
+               arg-map default-map]
+          (if (not (empty? args))
+            (if (and
+                 (keyword? (first args))
+                 (even? (count args)))
+              (merge arg-map (apply hash-map args))
+              (recur (next args)
+                     (next names)
+                     (assoc arg-map
+                            (first names)
+                            (first args))))
+            arg-map))]
+    (when-let [unrecognized (some->> arg-map keys (remove (set arg-names)) seq vec)]
+      (throw (IllegalArgumentException. (str "Unrecognized keyword args: " unrecognized))))
+    arg-map))
 
 (defmacro defunk [fn-name docstring args & body]
   (let [arg-names       (map first (partition 2 args))
