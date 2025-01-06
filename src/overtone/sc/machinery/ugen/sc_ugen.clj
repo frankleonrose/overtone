@@ -6,7 +6,8 @@
   {:author "Sam Aaron"}
   (:use [overtone.sc.machinery.ugen defaults]
         [overtone.helpers lib])
-  (:require [clojure.pprint]))
+  (:require [clojure.pprint]
+            [overtone.sc.machinery.ugen.common :refer [special-ugen-name]]))
 
 (defonce ^{:private true} __RECORDS__
   (do
@@ -53,10 +54,10 @@
 
 (defmethod clojure.pprint/simple-dispatch SCUGen [ug]
   (println
-   (str "#<sc-ugen: " (overtone-ugen-name (:name ug)) (:rate-name ug) " [" (count-ugen-args ug) "]>")))
+   (str "#<sc-ugen: " (overtone-ugen-name (special-ugen-name ug)) (:rate-name ug) " [" (count-ugen-args ug) "]>")))
 
 (defmethod print-method SCUGen [ug ^java.io.Writer w]
-  (.write w (str "#<sc-ugen: " (overtone-ugen-name (:name ug)) (:rate-name ug) " [" (count-ugen-args ug) "]>")))
+  (.write w (str "#<sc-ugen: " (overtone-ugen-name (special-ugen-name ug)) (:rate-name ug) " [" (count-ugen-args ug) "]>")))
 
 (defn control-proxy
   "Create a new control proxy with the specified name, value and rate. Rate

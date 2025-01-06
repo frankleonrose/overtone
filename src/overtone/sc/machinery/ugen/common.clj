@@ -17,3 +17,15 @@
       (get REVERSE-BINARY-OPS (:special ugen))
 
       (:name ugen))))
+
+(defn special-ugen-name
+  [ugen]
+  (overtone-ugen-name
+   (case (:name ugen)
+     "UnaryOpUGen"
+     (str (get REVERSE-UNARY-OPS (:special ugen)) "-unary")
+
+     "BinaryOpUGen"
+     (str (get REVERSE-BINARY-OPS (:special ugen)) "-binary")
+
+     (:name ugen))))
