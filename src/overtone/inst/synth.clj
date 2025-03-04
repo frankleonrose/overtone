@@ -331,7 +331,7 @@
                       src  (f-sin-osc (* freq (inc i)))
                       newz (mul-add src f z)]
                   (recur newz (inc i)))))]
-    (out 10 (pan2 (* amp snd)))))
+     (* amp snd)))
 
 (definst whoahaha
   [freq 440 dur 5 osc 100 mul 1000]
