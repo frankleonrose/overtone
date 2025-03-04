@@ -310,7 +310,7 @@
         osc-a (* (sin-osc (mouse-x 20 3000))
                  0.3)
         osc-b (* amp (sin-osc (* (mouse-y 3000 0) osc-a)))]
-    osc-a))
+    osc-b))
 
 ;; From the SC2 examples included with SC
 ;; Don't think it's quite there, but almost...
