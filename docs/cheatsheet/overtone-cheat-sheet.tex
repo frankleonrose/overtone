@@ -698,13 +698,17 @@
                }
 
 
+               % Couldn't figure how to escape the % below to use in a \input{|"command"}
+               \immediate\write18{git show --no-patch --format=\%cD HEAD | cut -d' ' -f2-4 > \jobname.tmp}
 
                \begin{flushright}
                  \footnotesize
-                 \rule{0.7\linewidth}{0.25pt}
-                 \verb!Revision: 0.9.1.2, Date: 17th December, 2013!\\
+                 \rule{0.7\linewidth}{0.25pt}\\
+                 \texttt{Revision:~\input{|"git describe"}\unskip, Date:~\input{\jobname.tmp}}
                  \verb!Sam Aaron (sam.aaron gmail com)!
                \end{flushright}
+
+               \immediate\write18{rm \jobname.tmp}
 
                % history
 
