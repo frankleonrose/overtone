@@ -24,29 +24,17 @@
   [name num-strings free-on-silence]
   (let [note-ins (if (= num-strings 1)
                    [(symbol "note")]
-                   (apply vector
-                          (map #(symbol (format "note-%d" %)) (range num-strings))))
-        note-default-ins (apply vector
-                                (flatten (map vector
-                                              note-ins
-                                              (repeat num-strings {:default 60 :min 0 :max 127}))))
+                   (map #(symbol (format "note-%d" %)) (range num-strings)))
+        note-default-ins (interleave note-ins
+                                     (repeat num-strings {:default 60 :min 0 :max 127}))
         gate-ins (if (= num-strings 1)
                    [(symbol "gate")]
-                   (apply vector
-                          (map #(symbol (format "gate-%d" %)) (range num-strings))))
-        gate-default-ins (apply vector (flatten (map vector
-                                                     gate-ins
-                                                     (repeat num-strings {:default 0}))))
-        both-default-ins (into note-default-ins gate-default-ins)
-        note-gate-pairs (apply vector (map vector note-ins gate-ins))
-        env-gen-fn (if free-on-silence
-                     '(fn [x] (overtone.sc.ugens/env-gen
-                               (overtone.sc.envelope/asr 0.0001 1 0.1)
-                               :gate (second x)
-                               :action overtone.sc.ugens/FREE))
-                     '(fn [x] (overtone.sc.ugens/env-gen
-                               (overtone.sc.envelope/asr 0.0001 1 0.1)
-                               :gate (second x))))]
+                   (map #(symbol (format "gate-%d" %)) (range num-strings)))
+        gate-default-ins (interleave gate-ins
+                                     (repeat num-strings {:default 0}))
+        gate-action (if free-on-silence
+                      overtone.sc.ugens/FREE
+                      overtone.sc.ugens/NO-ACTION)]
     `(defsynth ~name
        ~(str "a stringed instrument synth with " num-strings
              " strings mixed and sent thru
@@ -60,7 +48,8 @@
                " This instrument
   is persistent.  It will not be freed when the strings go silent."))
 
-       [~@both-default-ins
+       [~@note-default-ins
+        ~@gate-default-ins
         ~'dur       {:default 10.0  :min 1.0 :max 100.0}
         ~'decay     {:default 30    :min 1   :max 100} ;; pluck decay
         ~'coef      {:default 0.3   :min -1  :max 1}   ;; pluck coef
@@ -76,26 +65,30 @@
         ~'lp-rq     {:default 1.0   :min 0.1 :max 10.0}
         ~'pan       {:default 0.0   :min -1  :max 1}
         ~'out-bus   {:default 0     :min 0   :max 100}]
-       (let [strings# (map #(let [frq#  (midicps (first %))
-                                  nze#  (~'* ~'noise-amp (pink-noise))
-                                  plk#  (pluck nze#
-                                               (second %)
-                                               (/ 1.0 8.0)
-                                               (~'/ 1.0 frq#)
-                                               ~'decay
-                                               ~'coef)]
-                              (leak-dc (~'* plk# (~env-gen-fn %))
-                                       0.995))
-                           ~note-gate-pairs)
+       (let [strings# (map (fn [note# gate#]
+                             (let [frq#  (midicps note#)
+                                   nze#  (~'* ~'noise-amp (pink-noise))
+                                   plk#  (pluck nze#
+                                                gate#
+                                                (/ 1.0 8.0)
+                                                (~'/ 1.0 frq#)
+                                                ~'decay
+                                                ~'coef)]
+                               (leak-dc (~'* plk# (overtone.sc.ugens/env-gen
+                                                   (overtone.sc.envelope/asr 0.0001 1 0.1)
+                                                   :gate gate#
+                                                   :action ~gate-action))
+                                        0.995)))
+                           [~@note-ins] [~@gate-ins])
              src# (~'* ~'pre-amp (mix strings#))
              ;; distortion from fx-distortion2
              k#   (~'/ (~'* 2 ~'distort) (~'- 1 ~'distort))
              dis# (~'/ (~'* src# (~'+ 1 k#))
-                   (~'+ 1 (~'* k# (~'abs src#))))
+                       (~'+ 1 (~'* k# (~'abs src#))))
              vrb# (free-verb dis# ~'rvb-mix ~'rvb-room ~'rvb-damp)
              fil# (rlpf vrb# ~'lp-freq ~'lp-rq)]
          (out ~'out-bus (pan2 (~'* ~'amp fil#) ~'pan))))))
-;;(macroexpand-1 '(gen-stringed-synth ektara 1 true))
+;;(macroexpand-1 '(gen-stringed-synth two-string 2 true))
 
 ;; ======================================================================
 ;; common routines for stringed instruments
