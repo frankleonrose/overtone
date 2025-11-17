@@ -21,59 +21,59 @@
 
 (defonce pplayers (atom {}))
 
-(def ^:private event-defaults
-  {:note
-   {:type             :note
-    :mtranspose       0
-    :gtranspose       0.0
-    :ctranspose       0.0
-    :octave           5.0
-    :root             0.0
-    :degree           1
-    :mode             :major
-    :steps-per-octave 12.0
-    :detune           0.0
-    :harmonic         1.0
-    :octave-ratio     2.0
-    :dur              1
-    :swing            0
-    :swing-quant      2
-    :clock            nil
-    :bpm              nil}
+(defmulti event-defaults :type :default :note)
 
-   :chord
-   {:type             :chord
-    :mtranspose       0
-    :gtranspose       0.0
-    :ctranspose       0.0
-    :octave           5.0
-    :root             0.0
-    :degree           1
-    :mode             :major
-    :chord            :from-scale
-    :inversion        0
-    :chord-size       3
-    :steps-per-octave 12.0
-    :detune           0.0
-    :harmonic         1.0
-    :octave-ratio     2.0
-    :dur              1
-    :strum            0}
+(defmethod event-defaults :note [_]
+  {:type             :note
+   :mtranspose       0
+   :gtranspose       0.0
+   :ctranspose       0.0
+   :octave           5.0
+   :root             0.0
+   :degree           1
+   :mode             :major
+   :steps-per-octave 12.0
+   :detune           0.0
+   :harmonic         1.0
+   :octave-ratio     2.0
+   :dur              1
+   :swing            0
+   :swing-quant      2
+   :clock            nil
+   :bpm              nil})
 
-   :ctl
-   {:type   :ctl
-    :dur    1
-    :root   0.0
-    :octave 5.0
-    :gtranspose       0.0
-    :steps-per-octave 12.0
-    :octave-ratio     2.0
-    :harmonic         1.0
-    :ctranspose       0.0
-    :detune           0.0
-    :swing-quant      2
-    :swing            0
-    }})
+(defmethod event-defaults :chord [_]
+  {:type             :chord
+   :mtranspose       0
+   :gtranspose       0.0
+   :ctranspose       0.0
+   :octave           5.0
+   :root             0.0
+   :degree           1
+   :mode             :major
+   :chord            :from-scale
+   :inversion        0
+   :chord-size       3
+   :steps-per-octave 12.0
+   :detune           0.0
+   :harmonic         1.0
+   :octave-ratio     2.0
+   :dur              1
+   :strum            0})
+
+(defmethod event-defaults :ctl [_]
+  {:type   :ctl
+   :dur    1
+   :root   0.0
+   :octave 5.0
+   :gtranspose       0.0
+   :steps-per-octave 12.0
+   :octave-ratio     2.0
+   :harmonic         1.0
+   :ctranspose       0.0
+   :detune           0.0
+   :swing-quant      2
+   :swing            0})
 
 (declare event-derivations)
 
@@ -81,8 +81,7 @@
   ([e k]
    (if (contains? e k)
      (get e k)
-     (let [t (:type e :note)
-           d (get event-defaults t)]
+     (let [d (event-defaults e)]
        (cond
          (contains? d k)
          (get d k)
@@ -94,8 +93,7 @@
   ([e k fallback]
    (if (contains? e k)
      (get e k)
-     (let [t (:type e :note)
-           d (get event-defaults t)]
+     (let [d (event-defaults e)]
        (cond
          (contains? d k)
          (get d k)
