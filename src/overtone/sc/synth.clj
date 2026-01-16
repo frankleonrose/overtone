@@ -822,6 +822,7 @@
 (extend Synth
   protocols/IKillable
   {:kill* (fn [s]
+            (println [:kill-nodes (vec (node-tree-matching-synth-ids (:name (:sdef s))))])
             (kill (node-tree-matching-synth-ids (:name (:sdef s)))))})
 
 (extend java.util.regex.Pattern

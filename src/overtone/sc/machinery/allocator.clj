@@ -62,6 +62,7 @@
   "Execute action-fn and catch all exceptions - outputting them to the
    error log. All actions are executed in sequence."
   [action-fn caller-name]
+  (log/info (format "Executing action-fn in %s" caller-name))
   (send action-fn-executor* (fn [_]
                               (try
                                 (action-fn)

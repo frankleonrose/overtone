@@ -138,6 +138,7 @@
     (check-for-jack-or-pipewire!))
   (println  "--> Connecting to external SuperCollider server:" (str host ":" port))
   (log/debug "Connecting to external SuperCollider server: " host ":" port)
+  ;; (deps/unsatisfy-all-dependencies)
   (let [sc-server (osc/osc-client host port false)]
     (osc/osc-listen sc-server #(event/event [:overtone :osc-msg-received] :msg %))
     (dosync
@@ -152,7 +153,7 @@
       (when-not (= :connected @connection-status*)
         (if (< cnt defaults/N-RETRIES)
           (do
-            (log/debug (str "sending status... (" cnt ")"  ))
+            (log/debug (str "sending status... (" cnt ")"))
             (server-snd "/status")
             (Thread/sleep 100)
             (recur (inc cnt)))
@@ -326,8 +327,8 @@
   ([port opts]
    (when-not (= :booting @connection-status*)
      (throw (Exception. "Can't boot external server as a server is already connected/connecting!")))
-   (log/debug "booting external server")
-   (let [full-opts (args/merge-sc-args opts {:port port})
+   (log/debug "booting external server on port " port)
+   (let [full-opts (args/merge-sc-args opts {:port port}) ;; 57111
          cmd       (sc-command full-opts)
 
          sc-thread (if (windows-os?)
@@ -380,7 +381,7 @@
       (ref-set connection-info*
                (transient-connection-info connection-type port)))
 
-     (let [port (or port (get-free-port))]
+     (let [port (or #_57110 port (get-free-port))]
        (when (not= :external connection-type)
          (log/warn "Only :external connection type is supported, :connection-type " connection-type " ignored. (" config/OVERTONE-CONFIG-FILE ")"))
        (boot-server port opts)
@@ -394,6 +395,7 @@
   []
   (locking connection-info*
 
+    (prn "Shuttiiing down...")
     (log/info "Shutting down...")
     (event/sync-event :shutdown)
 
@@ -409,6 +411,7 @@
       (osc/osc-close @server-osc-peer* true))
 
     (log/info "Resetting server state and unsatisfying all deps...")
+    (prn "Resetting server state and unsatisfying all deps...")
     (dosync
      (ref-set server-osc-peer* nil)
      (ref-set connection-info* {})

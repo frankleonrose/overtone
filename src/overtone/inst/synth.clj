@@ -155,7 +155,7 @@
     (* amp echo)))
 
 (definst pad
-  [note 60 t 10 amt 0.3 amp 0.1 a 0.4 d 0.5 s 0.8 r 2]
+  [note 60 t 10 amt 0.3 amp 1.0 a 0.4 d 0.5 s 0.8 r 2]
   (let [freq   (midicps note)
         lfo    (+ 2 (* 0.01 (sin-osc:kr 5 (rand 1.5))))
         src    (apply + (saw [freq (* freq lfo)]))
@@ -176,7 +176,7 @@
         f-env (+ freq (* 3 freq (env-gen (perc 0.012 (- release 0.1)))))
         bfreq (/ freq 2)
         sig   (apply +
-                     (concat (* 0.7 (sin-osc [bfreq (* 0.99 bfreq)]))
+                     (concat (* 0.7 (sin-osc [bfreq (* 0.99 bfreq)] :phase [0 0.1]))
                              (lpf (saw [freq (* freq 1.01)]) f-env)))
         audio (* amp env sig)]
     audio))

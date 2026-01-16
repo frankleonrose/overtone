@@ -48,6 +48,37 @@
                                               1))))]
     (out out-bus (* env amp (pan2 y)))))
 
+
+(defsynth fx-space-reverb
+  [bus 0
+   gate 1
+   threshold 0.1
+   amp 0.1]
+  (let [env             (linen gate 0.1 1 0.1 FREE)
+        num-combs       6
+        num-allpass     4
+        src             (in bus 2)
+        reverb-predelay (delay-n src 0.048 0.048)
+        y               (mix (repeat num-combs (comb-l reverb-predelay 0.1 (ranged-rand 0.01 0.1) 5)))
+        y               (loop [cnt num-allpass
+                               res y]
+                          (if (<= cnt 0)
+                            res
+                            (recur (dec cnt)
+                                   (allpass-n res
+                                              0.051
+                                              [(ranged-rand 0.01 0.05)
+                                               (ranged-rand 0.01 0.05)]
+                                              1))))]
+    (replace-out bus (* env amp (pan2 y)))))
+#_
+(defsynth fx-space-reverb
+  [bus 0 gate 1 threshold 0.1 amp 0.1]
+  (let [output-bus (audio-bus 2)
+        output (space-reverb :out-bus output-bus :in-bus bus
+                             :gate gate :threshold threshold :amp amp)]
+    (replace-out bus output)))
+
 ;;(def st (space-theremin :out-bus 10 :amp 0.8 :cutoff 1000))
 ;;(space-reverb [:after st] :in-bus 10)
 ;;(stop)

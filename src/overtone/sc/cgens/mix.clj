@@ -29,10 +29,15 @@
   "Spread input channels across a stereo field, with control over the center point
   and spread width of the target field, and level compensation that lowers the volume
   for each additional input channel."
-  (:ar (let [n         (count in-array)
-             level     (if level-comp?
-                         (* level (Math/sqrt (/ 1 (dec n))))
-                         level)
+  (:ar (let [n         (max 2 (count in-array))
+             level     (cond
+                         (true? level-comp?)
+                         ;; Equal power
+                         (* level (Math/sqrt (/ 1 n)))
+                         (false? level-comp?)
+                         level
+                         :else
+                         (* level (Math/pow (/ 1 n) level-comp?)))
              positions (for [i (range n)]
                          (+ center
                             (* spread
@@ -40,4 +45,4 @@
                                      (/ 2 (dec n)))
                                   1))))
              pans      (pan2 in-array positions level)]
-         (mix pans))))
+         (sum pans))))

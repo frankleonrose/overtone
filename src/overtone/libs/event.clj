@@ -15,7 +15,7 @@
 (defonce ^:private monitoring?* (atom false))
 (defonce ^:private monitor* (atom {}))
 (defonce ^:private lossy-workers* (atom {}))
-(defonce ^:private log-events? (atom false))
+(defonce ^:private log-events? (atom true))
 
 (defn- log-event
   "Log event on separate thread to ensure logging doesn't interfere with

@@ -12,6 +12,7 @@
 
 (defn- setup-foundation-groups
   []
+  (prn "Setting up foundation groups...")
   (let [overtone-group
         (with-server-sync
           #(group "Overtone" :head 0)
@@ -58,6 +59,7 @@
         monitor-group
         (with-server-sync #(group "Overtone Monitor" :after output-group)
           "whilst creating the Overtone Monitor group")]
+    (prn "Done setting up foundation groups...")
     (swap! foundation-groups* assoc
            :overtone-group          overtone-group
            :timing-group            timing-group

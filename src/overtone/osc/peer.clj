@@ -11,7 +11,8 @@
         [overtone.osc.encode :only [osc-encode-msg osc-encode-bundle]]
         [overtone.osc.pattern :only [matching-handlers]])
   (:require [overtone.at-at :as at-at]
-            [clojure.string :as string]))
+            [clojure.string :as string]
+            [overtone.config.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -22,6 +23,7 @@
 (defn turn-zero-conf-on
   "Turn zeroconf on and register all services in zero-conf-services* if any."
   []
+  (log/info "Turn on zero conf")
   (send zero-conf* (fn [zero-conf]
                      (if zero-conf
                        zero-conf
@@ -34,6 +36,7 @@
 (defn turn-zero-conf-off
   "Unregister all zeroconf services and close zeroconf down."
   []
+  (log/info "Turn off zero conf")
   (send zero-conf* (fn [^JmDNS zero-conf]
                      (when zero-conf
                        (.unregisterAllServices zero-conf)
@@ -44,6 +47,7 @@
 (defn unregister-zero-conf-service
   "Unregister zeroconf service registered with port."
   [port]
+  (log/info "Unregister zero conf")
   (send zero-conf* (fn [^JmDNS zero-conf port]
                      (swap! zero-conf-services* dissoc port)
                      (let [service (get @zero-conf-services* port)]
@@ -55,6 +59,7 @@
 (defn register-zero-conf-service
   "Register zeroconf service with name service-name and port."
   [service-name port]
+  (log/info "Register zero conf")
   (send zero-conf* (fn [^JmDNS zero-conf service-name port]
                      (let [service-name (str service-name " : " port)
                            service (ServiceInfo/create "_osc._udp.local"

@@ -29,11 +29,15 @@
                  (apply str (repeat (- 100 (long val)) " ")))))
  ::volume-bar)
 
-;; create a new instance of synth wawa with trigger id as a param
-(wawa uid)
+(comment 
+  ;; create a new instance of synth wawa with trigger id as a param
+  (wawa uid)
 
-;;Trigger handler can be removed with:
-(remove-event-handler ::volume-bar)
 
-;; Stop the synth (and thus also the triggers)
-(stop)
+  ;;Trigger handler can be removed with:
+  (remove-event-handler ::volume-bar)
+
+
+  ;; Stop the synth (and thus also the triggers)
+  (stop)
+  )

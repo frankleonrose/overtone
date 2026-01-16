@@ -96,6 +96,12 @@
                          [:replace @mixer]
                          :in-bus bus
                          synth-params)]
+    #_(when (and (node? @mixer)
+                 (node-live? @mixer)
+                 (server-connected?))
+        (with-server-sync
+          (println "Killing mixer: " @mixer)
+          (kill @mixer)))
     (reset! mixer new-mixer)))
 
 (defn replace-all-inst-mixer!
@@ -103,6 +109,7 @@
   [new-get-inst-mixer & params]
   (swap! studio* assoc ::get-inst-mixer new-get-inst-mixer)
   (doseq [[_name inst] (:instruments @studio*)]
+    (println "Replacing mixer for" _name ", " (-> inst :mixer deref node-status))
     (apply replace-inst-mixer! inst new-get-inst-mixer params)))
 
 (defn inst-channels
@@ -137,12 +144,21 @@
   vector of SynthNodes representing the effect instance."
   inst-channels)
 
+(defn input-key [fx]
+  (let [params (->> fx :params (map :name) (into #{}))]
+    (cond
+      (params "bus")    :bus
+      (params "in")     :in
+      (params "in-bus") :in-bus
+      :else (throw (IllegalArgumentException. "Inst FX must have `:bus`, `:in`, or `:in-bus` parameter.")))))
+
 (defmethod inst-fx! :mono
   [inst fx & args]
   (ensure-node-active! inst)
   (let [fx-group (:fx-group inst)
         bus      (:bus inst)
-        fx-id    (apply fx [:tail fx-group] :bus bus args)]
+        in-key   (input-key fx)
+        fx-id    (apply fx [:tail fx-group] bus args)]
     fx-id))
 
 (defmethod inst-fx! :stereo
@@ -151,8 +167,9 @@
   (let [fx-group (:fx-group inst)
         bus-l    (to-sc-id (:bus inst))
         bus-r    (inc bus-l)
-        fx-ids   [(apply fx [:tail fx-group] :bus bus-l args)
-                  (apply fx [:tail fx-group] :bus bus-r args)]]
+        in-key   (input-key fx)
+        fx-ids   [(apply fx [:tail fx-group] bus-l args)
+                  (apply fx [:tail fx-group] bus-r args)]]
     fx-ids))
 
 (defn clear-fx

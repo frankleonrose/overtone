@@ -5,6 +5,9 @@
   with `(in bus-id)`, and use `replace-out` to replace the dry signal with the
   processed signal."
   {:author "Jeff Rose"}
+  (:require [overtone.sc.cgens.mix :refer [mix]]
+            [overtone.sc.bus :refer [audio-bus]]
+            [overtone.sc.defcgen :refer [defcgen]])
   (:use [overtone.libs.event]
         [overtone.sc.synth]
         [overtone.sc.ugens]))
@@ -76,18 +79,38 @@
         lout (local-out (delay-c sig deltimes deltimes))]
     (replace-out bus output)))
 
+(defcgen dry-wet-mix [dry-wet dry wet]
+  (:ar (mix [(* dry (- 1 dry-wet))
+             (* wet dry-wet)])))
+
+(defsynth fx-g-verb
+  "Wraps g-verb ugen for use with instruments"
+  [bus 0
+   roomsize 10
+   revtime  3.0
+   dry-wet 1.0]
+  (let [input (in bus)
+        effected (g-verb input :roomsize roomsize :revtime revtime)
+        output (dry-wet-mix dry-wet input effected)]
+    (replace-out bus output)))
+
 (defsynth fx-echo
-  [bus 0 max-delay 1.0 delay-time 0.4 decay-time 2.0]
+  "Echo using `comb-n` to delay and decay signal."
+  [bus 0 max-delay 1.0 delay-time 0.4 decay-time 2.0
+   dry-wet {:default 1.0 :min 0 :max 1 :doc "Mix between dry and wet signals - 0 is entirely dry, 1 is entirely wet"}]
   (let [source (in bus)
-        echo (comb-n source max-delay delay-time decay-time)]
-    (replace-out bus (pan2 (+ echo source) 0))))
+        echo (mix [source
+                   (comb-n source max-delay delay-time decay-time)])
+        output (dry-wet-mix dry-wet source echo)]
+    (replace-out bus output)))
 
 (defsynth fx-chorus
   [bus 0 rate 0.002 depth 0.01]
   (let [src (in bus)
         dub-depth (* 2 depth)
         rates [rate (+ rate 0.001)]
-        osc (+ dub-depth (* dub-depth (sin-osc:kr rates)))
+        osc (-> (sin-osc:kr rates)
+                (mul-add dub-depth dub-depth))
         dly-a (delay-l src 0.3 osc)
         sig (apply + src dly-a)]
     (replace-out bus (* 0.3 sig))))
@@ -107,12 +130,25 @@
         snd (/ (* src (+ 1 k)) (+ 1 (* k (abs src))))]
     (replace-out bus snd)))
 
+;; 20251212 Cannot use a synth within a synth. Can the synth internal be extracted as cgen?
+;; (defsynth fx-distortion2-wd [bus 0 amount 0.5 wet-dry 0.5]
+;;   (let [original (in bus)
+;;         effect-bus (audio-bus 1)
+;;         _ (out effect-bus original)
+;;         _ (fx-distortion2 effect-bus amount)
+;;         effect (in effect-bus)
+;;         combined (mix (* wet-dry original)
+;;                       (* (- 1 wet-dry) effect))]
+;;     (replace-out bus combined)))
+
 (defsynth fx-bitcrusher
-  [in-bus 0]
-  (let [src (in in-bus)
+  [bus 0
+   dry-wet {:default 1.0 :min 0 :max 1 :doc "Mix between dry and wet signals - 0 is entirely dry, 1 is entirely wet"}]
+  (let [src (in bus)
         resolution (/ (Math/pow 2 (dec BITS)) 2)
-        crushed (floor (/ (+ 0.5 (* src resolution)) resolution))]
-    (replace-out in-bus crushed)))
+        crushed (floor (/ (+ 0.5 (* src resolution)) resolution))
+        output (dry-wet-mix dry-wet src crushed)]
+    (replace-out bus output)))
 
 (defsynth fx-distortion-tubescreamer
   [bus 0 hi-freq 720.484 low-freq 723.431 hi-freq2 1 gain 4 threshold 0.4]

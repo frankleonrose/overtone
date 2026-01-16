@@ -134,8 +134,12 @@
    :midinote
    (fn [e]
      (let [note (eget e :note)
-           root (eget e :root)]
+           root (eget e :root)
+           freq (eget e :freq)]
        (cond
+         (some? freq)
+         (pitch/hz->midi freq)
+
          (rest? note)
          note
 
@@ -224,7 +228,7 @@
                   (conj acc kn val)
                   acc)))
             (if (sample/sample? i')
-              [:buf (:id i') ]
+              [:buf (:id i')]
               [])
             params)))
 
@@ -242,16 +246,14 @@
                             60000
                             (/ 1 (or (eget e :bpm)
                                      (:bpm (or (eget e :clock)
-                                               transport/*clock*)))))))]
+                                               transport/*clock*)))))))
+          play-note #(let [h (apply i args)]
+                       (event/event ::note-synth (assoc e ::synth-node h))
+                       (when (and end has-gate?)
+                         (server/at end (node/ctl h :gate 0))))]
       (if start
-        (server/at start
-          (let [h (apply i args)]
-            (when (and end has-gate?)
-              (server/at end (node/ctl h :gate 0))))
-          args)
-        (let [h (apply i args)]
-          (when (and end has-gate?)
-            (server/at end (node/ctl h :gate 0))))))))
+        (server/at start (play-note))
+        (play-note)))))
 
 (defn- handle-chord [e]
   (let [chord     (eget e :chord)
@@ -314,13 +316,15 @@
                            proto)
           next-seq  (pattern/pnext pseq)
           dur       (eget e :dur)
-          next-e    (pattern/pfirst next-seq)
+          next-e    (merge {:clock clock}
+                           (pattern/pfirst next-seq)
+                           proto)
           next-start-beat (some-> next-e
-                                  (eget :start-time)
+                                  (:start-time)  ;; Looking for explicit :start-time, *not* derived as with eget.
                                   (- (rhythm/metro-start clock))
                                   (/ (rhythm/metro-tick clock)))
           next-beat (or next-start-beat
-                        (eget next-e :beat)
+                        (get next-e :beat)  ;; Looking for explicit :beat key, not derived
                         (+ beat dur))]
       (if pseq
         (assoc player
@@ -410,39 +414,33 @@
         beat (if playing
                (max (or beat 1) (clock))
                (clock))
-        [beat pseq] (if-not playing
-                      ;; nothing is currently playing, so just start
-                      ;; immediatedly
-                      [beat pseq]
-
-                      ;; Other player(s) are already playing, make sure we are
-                      ;; in sync
-                      (case align
-                        ;; Play as though the sequence started at the prior
-                        ;; quant beat. We skip beats between then and now to
-                        ;; arrive at what starts playing now.
-                        :quant
-                        (let [skip-beats (- (mod (- beat quant-base) quant) offset)]
-                          [beat (drop-pseq skip-beats pseq)])
-                        :wait
-                        (let [switch (+ (quantize-ceil beat quant-base quant) offset)]
-                          (if-not (:playing player)
-                            ;; we aren't playing yet, so start the sequence at the
-                            ;; next available sync point (e.g. bar)
-                            [switch pseq]
-                            ;; We are already playing, let the old pattern play
-                            ;; out until we are ready to switch
-                            [beat (concat (take-pseq (- switch beat) old-pseq)
-                                          pseq)]))
-                        ;; Base case, just start at the next beat
-                        [beat pseq]))]
+        [beat pseq] (case (or (when-not playing :none) align)
+                      ;; Play as though the sequence started at the prior
+                      ;; quant beat. We skip beats between then and now to
+                      ;; arrive at what starts playing now.
+                      :quant
+                      (let [skip-beats (- (mod (- beat quant-base) quant) offset)]
+                        (if (neg? skip-beats)
+                          ;; Offset pushes us to start at some beat in the future
+                          [(- beat skip-beats) pseq]
+                          [beat (drop-pseq skip-beats pseq)]))
+                      :wait
+                      (let [switch (+ (quantize-ceil beat quant-base quant) offset)]
+                        (if-not (:playing player)
+                          ;; we aren't playing yet, so start the sequence at the
+                          ;; next available sync point (e.g. bar)
+                          [switch pseq]
+                          ;; We are already playing, let the old pattern play
+                          ;; out until we are ready to switch
+                          [beat (concat (take-pseq (- switch beat) old-pseq)
+                                        pseq)]))
+                      ;; Base case, :none, just start at the next beat+offset
+                      [(+ beat offset) pseq])]
     (assoc player
            :playing true
            :beat beat
            :pseq pseq
-           :align align
            :quant quant
-           :offset offset
            :quant-base quant-base
            :proto proto)))
 
@@ -478,6 +476,7 @@
   - `:clock` the clock to use for scheduling events
   - `:offset` wait this many beats before starting the pattern
   - `:quant` start the pattern at a beat number that is a multiple of `:quant`
+  - `:align` `:quant`, `:wait`, or `:none`.
   "
   [k pattern & {:as opts}]
   (if (= \_ (first (name k)))
@@ -486,7 +485,6 @@
       #_(apply padd k pattern args)
       (presume k pattern opts)))
   nil)
-
 
 (defn ploop [k pattern & args]
   (apply pplay k (repeat (pattern/pbind pattern)) args))

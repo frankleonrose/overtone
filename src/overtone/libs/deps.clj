@@ -17,7 +17,7 @@
                             :todo      []
                             :done      []
                             :history   []}))
-
+(deref dep-state*)
 (defn- now
   []
   (System/currentTimeMillis))
@@ -110,12 +110,14 @@
    Uses an agent so it's safe to call this from within a transaction."
   [deps key handler]
   (let [deps (deps->set deps)]
+    (log/info (format "on-deps: %s" deps))
     (send-off dep-state* on-deps* key deps handler)))
 
 (defn satisfy-deps
   "Specifies that a list of dependencies have been satisfied. Uses an
    agent so it's safe to call this from within a transaction."
   [& deps]
+  (prn (format "satisfying deps: %s" deps))
   (log/info (format "satisfying deps: %s" deps))
   (send-off dep-state* satisfy* (set deps)))
 
@@ -123,6 +125,7 @@
   "Reset the dependency system. Uses an agent so it's safe to call this
    from within a transaction."
   []
+  (log/info "resetting deps")
   (send dep-state* (fn [dep-state]
                      {:satisfied #{}
                       :todo      []
@@ -130,11 +133,13 @@
                       :history   (conj (:history dep-state)
                                        {:ts (now)
                                         :action :reset})})))
-
+;; (reset-deps)
 (defn unsatisfy-all-dependencies
   "Unsatisfy all deps and reset completed tasks as todo tasks. Uses an
    agent so it's safe to call this from within a transaction."
   []
+  (prn "unsatisfying all deps")
+  (log/info "unsatisfying all deps")
   (send dep-state* (fn [deps]
                      {:satisfied #{}
                       :todo      (into (deps :todo) (deps :done))

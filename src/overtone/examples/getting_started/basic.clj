@@ -129,7 +129,7 @@
 
 (comment
   (play-chords (metro2))
-  (metro-bpm metro2 70)
+  (metro-bpm metro2 90)
   (stop)
   )
 

@@ -199,6 +199,7 @@
                                   (let [new-control-agent (agent 0)]
                                     (on-sync-event control-key
                                                    (fn [msg]
+                                                     (log/info "Sync event")
                                                      (send new-control-agent
                                                            (fn [old-val]
                                                              (:data2 msg))))

@@ -174,29 +174,28 @@
 
 (comment
   ; there is something wrong with these two...
-
 (definst noise-hat
-  [freq   {:default 6000 :min 3000 :max 12000 :step 1}
-   amp    {:default 0.3 :min 0.001 :max 1 :step 0.01}
-   attack {:default 0.0001 :min 0.1 :max 1.0 :step 0.01}
-   decay  {:default 0.1 :min 0.1 :max 1.0 :step 0.01}]
-  (let [env (env-gen (perc attack decay) :action FREE)
-        noiz (bpf (* amp (gray-noise))
-                  (line freq 50 (* decay 0.5))
-                  (* env 0.1))
-        snd (* noiz env)]
-    snd))
+    [freq   {:default 6000 :min 3000 :max 12000 :step 1}
+     amp    {:default 0.3 :min 0.001 :max 1 :step 0.01}
+     attack {:default 0.0001 :min 0.1 :max 1.0 :step 0.01}
+     decay  {:default 0.1 :min 0.1 :max 1.0 :step 0.01}]
+    (let [env (env-gen (perc attack decay) :action FREE)
+          noiz (bpf (* amp (gray-noise))
+                    (line freq 50 (* decay 0.5))
+                    (* env 0.1))
+          snd (* noiz env)]
+      snd))
 
-(definst bell-hat
-  [freq   {:default 6000 :min 3000 :max 12000 :step 1}
-   amp    {:default 0.3 :min 0.001 :max 1 :step 0.01}
-   attack {:default 0.0001 :min 0.1 :max 1.0 :step 0.01}
-   decay  {:default 0.1 :min 0.1 :max 1.0 :step 0.01}]
-  (let [env (env-gen (perc attack decay) :action FREE)
-        noiz (bpf (* amp (gray-noise)) (line freq 5 (* decay 0.5)) (+ env 0.1))
-        wave (* 0.1 env (mix (sin-osc [4000 6500 5000])))
-        snd (+ noiz wave)]
-    snd))
+  (definst bell-hat
+    [freq   {:default 6000 :min 3000 :max 12000 :step 1}
+     amp    {:default 0.3 :min 0.001 :max 1 :step 0.01}
+     attack {:default 0.0001 :min 0.1 :max 1.0 :step 0.01}
+     decay  {:default 0.1 :min 0.1 :max 1.0 :step 0.01}]
+    (let [env (env-gen (perc attack decay) :action FREE)
+          noiz (bpf (* amp (gray-noise)) (line freq 5 (* decay 0.5)) (+ env 0.1))
+          wave (* 0.1 env (mix (sin-osc [4000 6500 5000])))
+          snd (+ noiz wave)]
+      snd))
   )
 
 ; SynthDef("hat",
@@ -364,3 +363,59 @@
   (let [env (env-gen (perc attack decay) :action FREE)
         snd (sin-osc freq)]
     (* amp env snd)))
+
+(definst cymbal
+  "`mute-after` in seconds causes sound to be cut short without having to
+   orchestrate a `gate` change.
+
+   From https://mcld.co.uk/cymbalsynthesis/
+   ```
+    {var lodriver, locutoffenv, hidriver, hicutoffenv, freqs, res, thwack;
+      locutoffenv = EnvGen.ar (Env.perc (0.5, 5)) * 20000 + 10;
+      lodriver = LPF.ar (WhiteNoise.ar (0.1), locutoffenv);
+      hicutoffenv = 10001 - (EnvGen.ar (Env.perc (1, 3)) * 10000);
+      hidriver = HPF.ar (WhiteNoise.ar (0.1), hicutoffenv);
+      hidriver = hidriver * EnvGen.ar (Env.perc (1, 2, 0.25));
+      thwack = EnvGen.ar (Env.perc (0.001,0.001,1));
+      freqs  = {exprand (300, 20000)} .dup (100);
+      res    = Ringz.ar (lodriver + hidriver + thwack, freqs) .mean;
+      ((res * 1) + (lodriver * 2) + thwack) .dup;
+    }.play
+   ```
+  "
+  [amp 1 gate 1 mute-after 10]
+  (let [resonator-count 100
+        lo-cutoff-env (-> (perc 0.5 5.0)
+                          (env-gen)
+                          (mul-add 20000 10))
+        lo-driver (-> (white-noise)
+                      (* 0.1)
+                      (lpf lo-cutoff-env))
+        hi-cutoff-env (- 10001 (-> (perc 1 3)
+                                   (env-gen)
+                                   (* 10000)))
+        hi-driver (-> (white-noise)
+                      (* 0.1)
+                      (hpf hi-cutoff-env))
+        hi-driver (-> (perc 1 2 0.25)
+                      (env-gen)
+                      (* hi-driver))
+        thwack (-> (perc 0.001 0.001 1)
+                   (env-gen))
+        freqs (->> (range resonator-count)
+                   (map (fn [_] (exp-rand 300 20000))))
+        resonators (-> (+ lo-driver hi-driver thwack)
+                       (ringz freqs 1))
+        signal (mix resonators)
+        mute-gate (line:kr :start 1.0 :end -0.01
+                           :dur mute-after)
+        env (-> (adsr :attack 0.001
+                      :decay 0.001
+                      :release 0.1)
+                (env-gen :gate (* gate mute-gate)
+                         :level-scale amp
+                         :action FREE))]
+    (* env signal)))
+
+
+

@@ -260,6 +260,7 @@
   [node]
   {:pre [(server-connected?)]}
   (ensure-node-active! node "freeing node.")
+  (println [:node-free* node])
   (snd "/n_free" (to-sc-id node))
   node)
 
