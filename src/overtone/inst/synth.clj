@@ -315,8 +315,8 @@
 ;; From the SC2 examples included with SC
 ;; Don't think it's quite there, but almost...
 (definst harmonic-swimming
-  [amp 0.5]
-  (let [freq     100
+  [freq 100 amp 0.5]
+  (let [
         partials 20
         z-init   0
         offset   (line:kr 0 -0.02 60)
@@ -331,7 +331,7 @@
                       src  (f-sin-osc (* freq (inc i)))
                       newz (mul-add src f z)]
                   (recur newz (inc i)))))]
-    (out 10 (pan2 (* amp snd)))))
+    (pan2 (* amp snd))))
 
 (definst whoahaha
   [freq 440 dur 5 osc 100 mul 1000]

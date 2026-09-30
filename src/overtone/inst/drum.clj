@@ -13,12 +13,13 @@
   "Kick drum based on a single sine oscillator, with a rapidly dropping
   frequency from (default) 150 to 50Hz."
   [freq       {:default 50 :min 40 :max 140 :step 1}
+   amp        {:default 1 :min 0.1 :max 1 :step 0.1}
    env-ratio  {:default 3 :min 1.2 :max 8.0 :step 0.1}
    freq-decay {:default 0.02 :min 0.001 :max 1.0 :step 0.001}
    amp-decay  {:default 0.5 :min 0.001 :max 1.0 :step 0.001}]
   (let [fenv (* (env-gen (envelope [env-ratio 1] [freq-decay] :exp)) freq)
         aenv (env-gen (perc 0.005 amp-decay) :action FREE)]
-    (* (sin-osc fenv (* 0.5 Math/PI)) aenv)))
+    (* amp (sin-osc fenv (* 0.5 Math/PI)) aenv)))
 
 (definst kick2
   "Kick drum based on a mix of a FM modulated sine oscillator, and filtered and
@@ -255,7 +256,7 @@
         amp-env (env-gen (perc 0.001 (+ decay 0.036)) :action FREE)
         noise (* 0.2 amp-env (pink-noise))
         snd (rlpf (* amp-env (+ snd noise)) 10567 0.2)]
-    snd))
+    (* amp snd)))
 
 (definst noise-snare
   [freq   {:default 1000 :min 100 :max 10000 :step 1}
@@ -337,7 +338,7 @@
         clap-env   (line 1 0 decay :action FREE)
         noise-envs (map #(envelope [0 0 1 0] [(* % 0.01) 0 0.04]) (range 8))
         claps      (apply + (* noise (map env-gen noise-envs)))]
-    (* claps clap-env)))
+    (* amp claps clap-env)))
 
 (definst haziti-clap
   [freq   {:default 44.77 :min 20 :max 400 :step 1}

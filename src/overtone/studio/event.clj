@@ -123,19 +123,23 @@
 
    :freq
    (fn [e]
-     (when (some #(contains? e %) [:midinote :note :degree])
-       (let [midinote (eget e :midinote)]
-         (if (keyword? midinote)
-           midinote
-           (* (eget e :harmonic)
-              (pitch/midi->hz
-               (+ midinote (eget e :ctranspose))))))))
+     (try
+       (when (some #(contains? e %) [:midinote :note :degree])
+         (let [midinote (eget e :midinote)]
+           (if (keyword? midinote)
+             midinote
+             (* (eget e :harmonic)
+                (pitch/midi->hz
+                 (+ midinote (eget e :ctranspose)))))))
+       (catch Exception e
+         (print (str e))
+         (throw e))))
 
    :midinote
    (fn [e]
      (let [note (eget e :note)
            root (eget e :root)
-           freq (eget e :freq)]
+           freq (get e :freq)]
        (cond
          (some? freq)
          (pitch/hz->midi freq)
